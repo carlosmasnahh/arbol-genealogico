@@ -1,0 +1,18 @@
+# Cache estáticos
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 7 days"
+  ExpiresByType application/javascript "access plus 7 days"
+  ExpiresByType image/png "access plus 30 days"
+  ExpiresByType image/jpeg "access plus 30 days"
+</IfModule>
+
+# Proteger /data de accesos directos
+<Directory "data">
+  Require all denied
+</Directory>
+
+# (Si tu hosting no permite <Directory>, usa:)
+<Files "tree.json">
+  Require all denied
+</Files>

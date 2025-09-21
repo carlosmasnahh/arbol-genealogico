@@ -1,0 +1,22 @@
+.input {
+  @apply border rounded-lg px-3 py-2 text-sm outline-none focus:ring focus:ring-sky-200;
+}
+.btn {
+  @apply bg-sky-600 text-white rounded-lg px-3 py-2 text-sm hover:bg-sky-700;
+}
+.btn-secondary {
+  @apply bg-slate-100 text-slate-800 rounded-lg px-3 py-2 text-sm hover:bg-slate-200;
+}
+.btn-danger {
+  @apply bg-rose-600 text-white rounded-lg px-3 py-2 text-sm hover:bg-rose-700;
+}
+.log {
+  background: #0b1020;
+  color: #b8ffe3;
+  border-radius: 0.75rem;
+  padding: 0.75rem;
+  height: 180px;
+  overflow: auto;
+}
+
+.input-group-sm .form-control { min-width: 0; }

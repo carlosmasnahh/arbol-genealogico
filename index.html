@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Árbol Genealógico </title>
+
+  <!-- Bootstrap 5 -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Aplica tema guardado (o sistema) antes de pintar -->
+  <script>
+    (() => {
+      const saved = localStorage.getItem('theme-mode'); // 'auto' | 'light' | 'dark'
+      const prefersDark = matchMedia('(prefers-color-scheme: dark)').matches;
+      const initial = saved || 'auto';
+      const effective = initial === 'auto' ? (prefersDark ? 'dark' : 'light') : initial;
+      document.documentElement.setAttribute('data-bs-theme', effective);
+      document.documentElement.dataset.themeMode = initial;
+    })();
+  </script>
+
+  <style>
+    body { background: var(--bs-body-bg); }
+    #chart { height: 640px; border: 1px solid var(--bs-border-color); border-radius: .75rem; }
+    pre.log { background:#0b1220; color:#e2e8f0; border-radius:.75rem; height:12rem; padding:.75rem; overflow:auto; }
+    .card { border-radius: .9rem; }
+    .input-group-sm .form-control { min-width: 0; }
+  </style>
+
+  <!-- Cytoscape + dagre -->
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <script src="https://unpkg.com/dagre@0.8.5/dist/dagre.min.js"></script>
+  <script src="https://unpkg.com/cytoscape-dagre@2.5.0/cytoscape-dagre.js"></script>
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <nav class="navbar navbar-expand-lg bg-body border-bottom sticky-top">
+    <div class="container-fluid">
+      <span class="navbar-brand fw-bold">Árbol Genealógico </span>
+
+      <ul class="navbar-nav ms-auto align-items-center gap-2">
+
+        <!-- Tema: Auto / Claro / Oscuro -->
+        <li class="nav-item dropdown">
+          <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" id="btnTheme" type="button">
+            <span id="themeIcon" class="me-1">🌙</span><span id="themeLabel">Oscuro</span>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><button class="dropdown-item" data-theme="auto" type="button">Automatico (según sistema)</button></li>
+            <li><button class="dropdown-item" data-theme="light" type="button">Claro</button></li>
+            <li><button class="dropdown-item" data-theme="dark" type="button">Oscuro</button></li>
+          </ul>
+        </li>
+
+        <!-- ÚNICO MENÚ: Acciones rápidas (utilidades + algoritmos) -->
+        <li class="nav-item dropdown">
+          <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" type="button">
+            Acciones rápidas
+          </button>
+
+          <!-- Mantén abierto al hacer clic dentro -->
+          <div class="dropdown-menu dropdown-menu-end p-3 shadow"
+               data-bs-auto-close="outside"
+               style="min-width:820px; border-radius:14px;">
+
+            <div class="container-fluid">
+              <!-- Tarjetas de utilidades -->
+              <div class="row g-3 mb-3">
+                <div class="col-6 col-md-4">
+                  <a href="#" class="text-decoration-none" data-jump="chart">
+                    <div class="d-flex p-3 rounded-4" style="background:var(--bs-tertiary-bg);">
+                      <div class="flex-shrink-0 d-inline-flex align-items-center justify-content-center rounded-3 me-3"
+                           style="width:48px;height:48px;background:#ffedd5;">
+                        <svg width="24" height="24" viewBox="0 0 24 24"><path fill="#ea580c" d="M12 12a4 4 0 1 0-4-4a4 4 0 0 0 4 4m0 2c-3.31 0-6 1.79-6 4v2h12v-2c0-2.21-2.69-4-6-4"/></svg>
+                      </div>
+                      <div class="flex-grow-1">
+                        <div class="fw-bold text-body">Centrar grafo</div>
+                        <div class="text-secondary small">Enfoca el árbol en pantalla</div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+
+                <div class="col-6 col-md-4">
+                  <a href="#" class="text-decoration-none" data-click="btnExportJPG">
+                    <div class="d-flex p-3 rounded-4" style="background:var(--bs-tertiary-bg);">
+                      <div class="flex-shrink-0 d-inline-flex align-items-center justify-content-center rounded-3 me-3"
+                           style="width:48px;height:48px;background:#e0f2fe;">
+                        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 5h16v14H4z" stroke="#0284c7" stroke-width="1.6" fill="none"/><path d="M8 13l2-2 3 3 3-4 2 3" stroke="#0284c7" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                      </div>
+                      <div class="flex-grow-1">
+                        <div class="fw-bold text-body">Exportar imagen</div>
+                        <div class="text-secondary small">JPG del grafo</div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+
+                <div class="col-6 col-md-4">
+                  <a href="#" class="text-decoration-none" data-click="btnClearView">
+                    <div class="d-flex p-3 rounded-4" style="background:var(--bs-tertiary-bg);">
+                      <div class="flex-shrink-0 d-inline-flex align-items-center justify-content-center rounded-3 me-3"
+                           style="width:48px;height:48px;background:#dcfce7;">
+                        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M9 18h6" stroke="#16a34a" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+                      </div>
+                      <div class="flex-grow-1">
+                        <div class="fw-bold text-body">Limpiar vista</div>
+                        <div class="text-secondary small">Quita resaltados y centra</div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+
+                <div class="col-6 col-md-4">
+                  <a href="#" class="text-decoration-none" data-click="btnExport">
+                    <div class="d-flex p-3 rounded-4" style="background:var(--bs-tertiary-bg);">
+                      <div class="flex-shrink-0 d-inline-flex align-items-center justify-content-center rounded-3 me-3"
+                           style="width:48px;height:48px;background:#f1f5f9;">
+                        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M12 16V4m0 0l-4 4m4-4l4 4M5 20h14" stroke="#475569" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+                      </div>
+                      <div class="flex-grow-1">
+                        <div class="fw-bold text-body">Exportar JSON</div>
+                        <div class="text-secondary small">Snapshot del árbol</div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+
+                <div class="col-6 col-md-4">
+                  <a href="#" class="text-decoration-none" data-click="btnReset">
+                    <div class="d-flex p-3 rounded-4" style="background:var(--bs-tertiary-bg);">
+                      <div class="flex-shrink-0 d-inline-flex align-items-center justify-content-center rounded-3 me-3"
+                           style="width:48px;height:48px;background:#ffe4e6;">
+                        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 4v6h6M20 20v-6h-6M20 10a8 8 0 10-8 8" stroke="#ef4444" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+                      </div>
+                      <div class="flex-grow-1">
+                        <div class="fw-bold text-body">Reiniciar demo</div>
+                        <div class="text-secondary small">Carga ejemplo inicial</div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+
+                <div class="col-6 col-md-4">
+                  <a href="#" class="text-decoration-none" data-click="btnNuke">
+                    <div class="d-flex p-3 rounded-4" style="background:var(--bs-tertiary-bg);">
+                      <div class="flex-shrink-0 d-inline-flex align-items-center justify-content-center rounded-3 me-3"
+                           style="width:48px;height:48px;background:#fee2e2;">
+                        <svg width="24" height="24" viewBox="0 0 24 24"><path d="M6 7h12l-1 13H7L6 7zM9 7V5a3 3 0 0 1 6 0v2" stroke="#dc2626" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+                      </div>
+                      <div class="flex-grow-1">
+                        <div class="fw-bold text-body">Eliminar TODO</div>
+                        <div class="text-secondary small">Vacía el árbol</div>
+                      </div>
+                    </div>
+                  </a>
+                </div>
+              </div>
+
+              <!-- Algoritmos -->
+              <div class="border-top pt-3">
+                <div class="small text-muted fw-semibold mb-2">Algoritmos</div>
+                <div class="row g-2">
+                  <div class="col-6 col-md-3">
+                    <button id="btnDFS" class="btn btn-outline-secondary w-100" type="button">DFS</button>
+                  </div>
+                  <div class="col-6 col-md-3">
+                    <button id="btnBFS" class="btn btn-outline-secondary w-100" type="button">BFS</button>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <button id="btnDepth" class="btn btn-outline-secondary w-100" type="button">Profundidad máx</button>
+                  </div>
+                  <div class="col-5 col-md-3">
+                    <input id="descId" type="number" class="form-control" placeholder="id">
+                  </div>
+                  <div class="col-7 col-md-3">
+                    <button id="btnDesc" class="btn btn-outline-secondary w-100" type="button">Descendientes</button>
+                  </div>
+                  <div class="col-12 col-md-6">
+                    <label class="btn btn-outline-secondary w-100 mb-0">Importar JSON
+                      <input id="fileImport" type="file" accept="application/json" hidden>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </li>
+
+      </ul>
+    </div>
+  </nav>
+
+  <!-- MINI TOOLBAR -->
+  <section class="bg-body border-bottom">
+    <div class="container-fluid py-3">
+      <div class="row g-2 align-items-end">
+
+        <!-- Crear persona -->
+        <div class="col-12 col-xl-3">
+          <label class="form-label small mb-1">Crear persona</label>
+          <div class="input-group input-group-sm">
+            <input id="newId" type="number" class="form-control" placeholder="id">
+            <input id="newName" type="text" class="form-control" placeholder="nombre">
+            <button id="btnAdd" class="btn btn-primary" type="button">Agregar</button>
+          </div>
+        </div>
+
+        <!-- Padre → hijo -->
+        <div class="col-12 col-sm-6 col-xl-3">
+          <label class="form-label small mb-1">Padre → hijo</label>
+          <div class="input-group input-group-sm">
+            <input id="pid" type="number" class="form-control" placeholder="id padre">
+            <input id="cid" type="number" class="form-control" placeholder="id hijo">
+            <button id="btnLink" class="btn btn-primary" type="button">Enlazar</button>
+          </div>
+        </div>
+
+        <!-- Mover subárbol -->
+        <div class="col-12 col-sm-6 col-xl-3">
+          <label class="form-label small mb-1">Mover subárbol</label>
+          <div class="input-group input-group-sm">
+            <input id="moveSubtreeId" type="number" class="form-control" placeholder="id subárbol">
+            <input id="moveNewParentId" type="number" class="form-control" placeholder="id nuevo padre">
+            <button id="btnMove" class="btn btn-primary" type="button">Mover</button>
+          </div>
+        </div>
+
+        <!-- Eliminar subárbol -->
+        <div class="col-12 col-sm-6 col-xl-3">
+          <label class="form-label small mb-1">Eliminar subárbol</label>
+          <div class="input-group input-group-sm">
+            <input id="delId" type="number" class="form-control" placeholder="id">
+            <button id="btnDel" class="btn btn-danger" type="button">Eliminar</button>
+          </div>
+        </div>
+
+        <!-- Definir pareja -->
+        <div class="col-12 col-lg-8">
+          <label class="form-label small mb-1">Pareja (monogamia)</label>
+          <div class="input-group input-group-sm">
+            <input id="coupleA" type="number" class="form-control" placeholder="id A">
+            <input id="coupleB" type="number" class="form-control" placeholder="id B">
+            <button id="btnCouple" class="btn btn-primary" type="button">Definir pareja</button>
+            <button id="btnUnCouple" class="btn btn-outline-secondary" type="button">Quitar</button>
+          </div>
+        </div>
+
+        <!-- Buscar por nombre -->
+        <div class="col-12 col-lg-4">
+          <label class="form-label small mb-1">Buscar por nombre</label>
+          <div class="input-group input-group-sm">
+            <input id="searchName" type="text" class="form-control" placeholder="ej: Ana">
+            <button id="btnSearch" class="btn btn-primary" type="button">Buscar</button>
+          </div>
+          <div id="searchResults" class="form-text mt-1"></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTENIDO -->
+  <main class="container-fluid py-4">
+    <div class="row g-4">
+      <div class="col-lg-4">
+        <div class="card p-3">
+          <h5 class="mb-3">Consola</h5>
+          <pre id="log" class="log"></pre>
+        </div>
+      </div>
+      <div class="col-lg-8">
+        <div class="card p-3">
+          <h5 class="mb-3">Visualización</h5>
+          <div id="chart" class="w-100"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="text-center text-muted small py-3">
+    Carlos Antonio Vitor Chua
+  </footer>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- Lógica de Tema + Mega-dropdown + reporte de errores a consola UI -->
+  <script>
+    (() => {
+      const root  = document.documentElement;
+      const icon  = document.getElementById('themeIcon');
+      const label = document.getElementById('themeLabel');
+      const sys   = matchMedia('(prefers-color-scheme: dark)');
+
+      function apply(mode) {
+        localStorage.setItem('theme-mode', mode);
+        root.dataset.themeMode = mode;
+        const effective = (mode === 'auto') ? (sys.matches ? 'dark' : 'light') : mode;
+        root.setAttribute('data-bs-theme', effective);
+        if (mode === 'auto') { label.textContent='Auto'; icon.textContent=sys.matches?'☀️':'🌙'; }
+        else if (mode === 'dark') { label.textContent='Oscuro'; icon.textContent='☀️'; }
+        else { label.textContent='Claro'; icon.textContent='🌙'; }
+      }
+      apply(root.dataset.themeMode || localStorage.getItem('theme-mode') || 'auto');
+      sys.addEventListener('change', () => { if ((root.dataset.themeMode||'auto')==='auto') apply('auto'); });
+      document.querySelectorAll('[data-theme]').forEach(b=>b.addEventListener('click',()=>apply(b.dataset.theme)));
+
+      // Tarjetas del mega-dropdown 
+      document.addEventListener('click', (e) => {
+        const j = e.target.closest('[data-jump]'); const c = e.target.closest('[data-click]');
+        if (j) { e.preventDefault(); document.getElementById(j.dataset.jump)?.scrollIntoView({behavior:'smooth', block:'center'}); }
+        if (c) { e.preventDefault(); document.getElementById(c.dataset.click)?.click(); }
+      });
+
+      // Reporta errores JS en la consola de la app
+      window.addEventListener('error', (ev) => {
+        const el = document.getElementById('log');
+        if (el) { el.textContent += 'JS ERROR: ' + ev.message + '\\n'; el.scrollTop = el.scrollHeight; }
+      });
+    })();
+  </script>
+
+  <!-- la lógica -->
+  <script src="app.js"></script>
+</body>
+</html>
