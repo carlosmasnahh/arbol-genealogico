@@ -1,0 +1,21 @@
+* text=auto
+
+# Fuerza LF en código fuente
+*.js   text eol=lf
+*.ts   text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.php  text eol=lf
+*.svg  text eol=lf
+*.md   text eol=lf
+
+# Archivos de Windows que sí usan CRLF
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
+
+# Binarios (sin conversión)
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
